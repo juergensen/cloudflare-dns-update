@@ -8,7 +8,7 @@ const apiToken = process.env.API_TOKEN
 const useIPV6 = (process.env.IPV6 || 'false') == 'true'
 const useIPV4 = (process.env.IPV4 || 'false') == 'true'
 const ttl = process.env.TTL || 1
-const cronTab = process.env.CRON || '5 * * * *'
+const cronTab = process.env.CRON || '*/10 * * * *'
 
 console.log({
   useIPV4,
