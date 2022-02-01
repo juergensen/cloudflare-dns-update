@@ -10,7 +10,7 @@ services:
       API_TOKEN: XXX
 
       # Optional
-      IPV6: true # (default = false)
-      # IPV4: false # (default = false)
-      # TTL: 1 # must be inbetween 60-86400; 1 = automatic (default = 1)
+      IPV6: "true" # (default = false)
+      # IPV4: "false" # (default = false)
+      # TTL: "1" # must be inbetween 60-86400; 1 = automatic (default = 1)
       # CRON: "5 * * * *" # every minute (default)

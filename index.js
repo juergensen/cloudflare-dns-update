@@ -21,7 +21,7 @@ console.log({
 
 if (!zoneId || domains.length === 0, !apiToken) {
   console.log('Missing enviromnent variables!')
-  return
+  process.exit(1)
 }
 
 var currentV6 = ''
