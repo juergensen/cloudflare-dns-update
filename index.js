@@ -127,7 +127,7 @@ async function updateV6() {
     return
   }
   await updateZoneV6(zoneId, domains, ipv6)
-  currentV6 == ipv6
+  currentV6 = ipv6
   console.log('finished ipv6')
 }
 
@@ -139,7 +139,7 @@ async function updateV4() {
     return
   }
   await updateZoneV4(zoneId, domains, ipv4)
-  currentV4 == ipv4
+  currentV4 = ipv4
   console.log('finished ipv4')
 }
 
