@@ -1,6 +1,7 @@
+import 'dotenv/config'
 import fetch from 'node-fetch'
 import cron from 'node-cron'
-import 'dotenv/config'
+import winston from 'winston'
 
 const zoneId = process.env.ZONE_ID
 const domains = (process.env.DOMAINS || '').split(',')
@@ -9,8 +10,35 @@ const useIPV6 = (process.env.IPV6 || 'false') == 'true'
 const useIPV4 = (process.env.IPV4 || 'false') == 'true'
 const ttl = process.env.TTL || 1
 const cronTab = process.env.CRON || '*/10 * * * *'
+const LOG_LEVEL = process.env.LOG_LEVEL || 'INFO'
 
-console.log({
+const { combine, timestamp, printf } = winston.format;
+const myFormat = printf(({ level, message, timestamp }) => {
+  const text = typeof message == 'object' ? JSON.stringify(message, null, 2) : message
+  return `${timestamp} [${level}]: ${text}`;
+});
+
+const logger = winston.createLogger({
+  level: LOG_LEVEL.toLowerCase(),
+  // format: winston.format.json(),
+  format: combine(
+    timestamp(),
+    myFormat
+  ),
+
+  // defaultMeta: { service: 'user-service' },
+  transports: [
+    //
+    // - Write all logs with importance level of `error` or less to `error.log`
+    // - Write all logs with importance level of `info` or less to `combined.log`
+    //
+    new winston.transports.Console(),
+    // new winston.transports.File({ filename: 'error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'combined.log' }),
+  ],
+});
+
+logger.info({
   useIPV4,
   useIPV6,
   zoneId,
@@ -20,7 +48,7 @@ console.log({
 })
 
 if (!zoneId || domains.length === 0, !apiToken) {
-  console.log('Missing enviromnent variables!')
+  logger.error('Missing enviromnent variables!')
   process.exit(1)
 }
 
@@ -86,14 +114,18 @@ async function updateZoneV6(zoneId, domains, ipv6) {
     return Promise.reject('No Domain found!')
   }
 
-  if (domains.length != toBeUpdated.length) console.warn('Not all Domains applied! Are all created in cloudflare?')
+  if (domains.length != toBeUpdated.length) {
+    const missingRecords = domains.filter(name => !toBeUpdated.map(r => r.name).includes(name) )
+    logger.warn('Not all Records applied! Are all created in cloudflare?')
+    logger.warn({ missingRecords, availableRecords: toBeUpdated.map(r => r.name) })
+  }
 
   for (let i = 0; i < toBeUpdated.length; i++) {
-    console.log('update ' + toBeUpdated[i].name)
+    logger.debug('update ' + toBeUpdated[i].name)
     await updateRecordV6(zoneId, toBeUpdated[i].id, ipv6, toBeUpdated[i].name)
     
   }
-  console.log(`${toBeUpdated.map(r=>r.name).join()} updated to '${ipv6}'`)
+  logger.info(`${toBeUpdated.map(r=>r.name).join()} updated to '${ipv6}'`)
 }
 
 async function updateZoneV4(zoneId, domains, ipv4) {
@@ -108,48 +140,52 @@ async function updateZoneV4(zoneId, domains, ipv4) {
     return Promise.reject('No Domain found!')
   }
 
-  if (domains.length != toBeUpdated.length) console.warn('Not all Domains applied! Are all created in cloudflare?')
+  if (domains.length != toBeUpdated.length) {
+    const missingRecords = domains.filter(name => !toBeUpdated.map(r => r.name).includes(name) )
+    logger.warn('Not all Records applied! Are all created in cloudflare?')
+    logger.warn({ missingRecords, availableRecords: toBeUpdated.map(r => r.name) })
+  }
 
   for (let i = 0; i < toBeUpdated.length; i++) {
-    console.log('update ' + toBeUpdated[i].name)
+    logger.debug('update ' + toBeUpdated[i].name)
     await updateRecordV4(zoneId, toBeUpdated[i].id, ipv4, toBeUpdated[i].name)
     
   }
-  console.log(`${toBeUpdated.map(r=>r.name).join()} updated to '${ipv4}'`)
+  logger.info(`${toBeUpdated.map(r=>r.name).join()} updated to '${ipv4}'`)
 }
 
 ////
 async function updateV6() {
   const ipv6 = await getV6()
   if (currentV6 == ipv6) {
-    console.log(new Date())
-    console.log('Skip. No ipv6 changed!', currentV6, ipv6)
+    logger.debug('Skip. No ipv6 changed!')
+    logger.debug({ fetchedIp: ipv6, knownIp: currentV6 })
     return
   }
   await updateZoneV6(zoneId, domains, ipv6)
   currentV6 = ipv6
-  console.log('finished ipv6')
+  logger.debug('finished ipv6')
 }
 
 async function updateV4() {
   const ipv4 = await getV4()
   if (currentV4 == ipv4) {
-    console.log(new Date())
-    console.log('Skip. No ipv4 changed!', currentV4, ipv4)
+    logger.debug('Skip. No ipv6 changed!')
+    logger.debug({ fetchedIp: ipv4, knownIp: currentV4 })
     return
   }
   await updateZoneV4(zoneId, domains, ipv4)
   currentV4 = ipv4
-  console.log('finished ipv4')
+  logger.debug('finished ipv4')
 }
 
 if (useIPV6) await updateV6()
 if (useIPV4) await updateV4()
 
 cron.schedule(cronTab, async () => {
-  console.log('start')
+  logger.debug('start')
   if (useIPV6) await updateV6()
   if (useIPV4) await updateV4()
-  console.log('finished at ' + new Date())
+  logger.debug('finished at ' + new Date())
 });
 
