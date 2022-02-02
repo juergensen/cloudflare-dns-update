@@ -20,21 +20,13 @@ const myFormat = printf(({ level, message, timestamp }) => {
 
 const logger = winston.createLogger({
   level: LOG_LEVEL.toLowerCase(),
-  // format: winston.format.json(),
   format: combine(
     timestamp(),
     myFormat
   ),
-
-  // defaultMeta: { service: 'user-service' },
   transports: [
-    //
-    // - Write all logs with importance level of `error` or less to `error.log`
-    // - Write all logs with importance level of `info` or less to `combined.log`
-    //
     new winston.transports.Console(),
-    // new winston.transports.File({ filename: 'error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'combined.log' }),
+    // new winston.transports.File({ filename: 'combined.log' }),
   ],
 });
 
@@ -44,7 +36,8 @@ logger.info({
   zoneId,
   domains,
   ttl,
-  cronTab
+  cronTab,
+  LOG_LEVEL
 })
 
 if (!zoneId || domains.length === 0, !apiToken) {
